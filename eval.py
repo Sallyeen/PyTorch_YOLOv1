@@ -12,7 +12,7 @@ parser.add_argument('-v', '--version', default='yolo',
 parser.add_argument('-d', '--dataset', default='voc',
                     help='voc, coco-val, coco-test.')
 parser.add_argument('--trained_model', type=str,
-                    default='weights_yolo_v2/yolo_v2_72.2.pth', 
+                    default='/home/xavier/NewDisk/001_for_GJ/002/PyTorch_YOLOv1/weights/voc/yolo/yolo_150.pth', 
                     help='Trained state_dict file path to open')
 parser.add_argument('-size', '--input_size', default=416, type=int,
                     help='input_size')

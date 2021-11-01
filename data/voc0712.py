@@ -7,11 +7,13 @@ Updated by: Ellis Brown, Max deGroot
 """
 import os.path as osp
 import sys
+sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 import torch
 import torch.utils.data as data
 import cv2
 import numpy as np
 import random
+
 
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
@@ -27,7 +29,7 @@ VOC_CLASSES = (  # always index 0
 
 
 # VOC数据集的目录，以下是笔者的目录。读者请根据自己的电脑来进行修改
-VOC_ROOT = "/home/k545/object-detection/dataset/VOCdevkit/"
+VOC_ROOT = "/home/xavier/NewDisk/001_for_GJ/002/PyTorch_YOLOv1/VOCdevkit/"
 
 
 class VOCAnnotationTransform(object):
@@ -188,6 +190,7 @@ class VOCDetection(data.Dataset):
 
 
 if __name__ == "__main__":
+    # 数据预处理之基础变换，resize和色彩归一化
     def base_transform(image, size, mean):
         x = cv2.resize(image, (size[1], size[0])).astype(np.float32)
         x -= mean

@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
-
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
@@ -22,9 +23,10 @@ def conv3x3(in_planes, out_planes, stride=1):
                      padding=1, bias=False)
 
 def conv1x1(in_planes, out_planes, stride=1):
-    """1x1 convolution"""
+    """1x1 convolution Without padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
+# 两层：卷积 bn relu -> 卷积 bn += relu；第一层通道改变，大小可变，第二层全默认
 class BasicBlock(nn.Module):
     expansion = 1
 
@@ -37,7 +39,7 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
-
+ 
     def forward(self, x):
         identity = x
 
@@ -56,6 +58,7 @@ class BasicBlock(nn.Module):
 
         return out
 
+# 三层：卷积 bn relu × 2 -> 卷积 bn += relu；第一层通道改变，第二层大小可变，第三层通道改变
 class Bottleneck(nn.Module):
     expansion = 4
 
@@ -95,26 +98,25 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
+    # resnet18中，layers=[2, 2, 2, 2]
     def __init__(self, block, layers, zero_init_residual=False):
         super(ResNet, self).__init__()
         self.inplanes = 64
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+                               bias=False)  # 7*7卷积，大小折半
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1) # 3*3卷积，大小折半
+        self.layer1 = self._make_layer(block, 64, layers[0]) # 调用两次block，共2*2层，
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2) # 调用两次block，共2*2层，
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2) # 调用两次block，共2*2层，
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2) # 调用两次block，共2*2层，
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-
         # Zero-initialize the last BN in each residual branch,
         # so that the residual branch starts with zeros, and each residual block behaves like an identity.
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
@@ -124,7 +126,6 @@ class ResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
-
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
@@ -132,13 +133,11 @@ class ResNet(nn.Module):
                 conv1x1(self.inplanes, planes * block.expansion, stride),
                 nn.BatchNorm2d(planes * block.expansion),
             )
-
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes))
-
         return nn.Sequential(*layers)
 
     def forward(self, x):
@@ -146,12 +145,10 @@ class ResNet(nn.Module):
         C_1 = self.bn1(C_1)
         C_1 = self.relu(C_1)
         C_1 = self.maxpool(C_1)
-
         C_2 = self.layer1(C_1)
         C_3 = self.layer2(C_2)
         C_4 = self.layer3(C_3)
         C_5 = self.layer4(C_4)
-
         return C_5
             
 def resnet18(pretrained=False, **kwargs):
@@ -216,6 +213,5 @@ if __name__=='__main__':
     device = torch.device("cuda")
     model = resnet101(detection=True).to(device)
     print(model)
-
     input = torch.randn(1, 3, 512, 512).to(device)
     output = model(input)

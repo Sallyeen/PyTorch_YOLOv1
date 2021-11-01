@@ -19,6 +19,7 @@ from utils.cocoapi_evaluator import COCOAPIEvaluator
 from utils.vocapi_evaluator import VOCAPIEvaluator
 
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='YOLO Detection')
     parser.add_argument('-v', '--version', default='yolo',
@@ -27,7 +28,7 @@ def parse_args():
                         help='voc or coco')
     parser.add_argument('-ms', '--multi_scale', action='store_true', default=False,
                         help='use multi-scale trick')                  
-    parser.add_argument('--batch_size', default=32, type=int, 
+    parser.add_argument('--batch_size', default=16, type=int, 
                         help='Batch size for training')
     parser.add_argument('--lr', default=1e-3, type=float, 
                         help='initial learning rate')
@@ -49,15 +50,14 @@ def parse_args():
                         help='Number of workers used in dataloading')
     parser.add_argument('--eval_epoch', type=int,
                             default=10, help='interval between evaluations')
-    parser.add_argument('--cuda', action='store_true', default=False,
+    parser.add_argument('--cuda', action='store_true', default=True,
                         help='use cuda.')
-    parser.add_argument('--tfboard', action='store_true', default=False,
+    parser.add_argument('--tfboard', action='store_true', default=True,
                         help='use tensorboard')
     parser.add_argument('--debug', action='store_true', default=False,
                         help='debug mode where only one image is trained')
     parser.add_argument('--save_folder', default='weights/', type=str, 
                         help='Gamma update for SGD')
-
     return parser.parse_args()
 
 
@@ -182,20 +182,25 @@ def train():
 
     # 开始训练
     t0 = time.time()
+    # 共训练150轮
     for epoch in range(args.start_epoch, max_epoch):
 
-        # 使用阶梯学习率衰减策略
+        # 使用阶梯学习率衰减策略，在第90-120轮，学习率衰减10%
         if epoch in cfg['lr_epoch']:
             tmp_lr = tmp_lr * 0.1
             set_lr(optimizer, tmp_lr)
     
+        # 每一轮训练，共训练的批数，epoch_size批，用图像与标签训练
         for iter_i, (images, targets) in enumerate(dataloader):
+            
             # 使用warm-up策略来调整早期的学习率
             if not args.no_warm_up:
+                # 在设定的warm_up轮次以内的，调整学习率
                 if epoch < args.wp_epoch:
                     tmp_lr = base_lr * pow((iter_i+epoch*epoch_size)*1. / (args.wp_epoch*epoch_size), 4)
                     set_lr(optimizer, tmp_lr)
 
+                # 在设定的warm_up轮次的第一批，还原学习率
                 elif epoch == args.wp_epoch and iter_i == 0:
                     tmp_lr = base_lr
                     set_lr(optimizer, tmp_lr) 
@@ -209,7 +214,7 @@ def train():
                 # 插值
                 images = torch.nn.functional.interpolate(images, size=train_size, mode='bilinear', align_corners=False)
             
-            # 制作训练标签
+            # 制作训练标签 (batch_size, hs*ws, 1+1+4+1)
             targets = [label.tolist() for label in targets]
             targets = tools.gt_creator(input_size=train_size, 
                                        stride=yolo_net.stride, 
