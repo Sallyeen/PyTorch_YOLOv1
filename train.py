@@ -160,9 +160,8 @@ def train():
         c_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
         log_path = os.path.join('log/coco/', args.version, c_time)
         os.makedirs(log_path, exist_ok=True)
-
         writer = SummaryWriter(log_path)
-    
+
     # keep training
     if args.resume is not None:
         print('keep training model: %s' % (args.resume))
