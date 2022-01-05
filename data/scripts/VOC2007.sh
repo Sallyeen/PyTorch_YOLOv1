@@ -8,7 +8,9 @@ if [ -z "$1" ]
   then
     # navigate to ~/data
     echo "navigating to ~/data/ ..." 
-    cd data/
+    # cd data/
+    mkdir -p ~/data
+    cd ~/data/
   else
     # check if is valid directory
     if [ ! -d $1 ]; then
@@ -38,4 +40,8 @@ rm VOCtest_06-Nov-2007.tar
 end=`date +%s`
 runtime=$((end-start))
 
+<<<<<<< HEAD
 echo "Completed in" $runtime "seconds"
+=======
+echo "Completed in" $runtime "seconds"
+>>>>>>> upstream/master

@@ -1,6 +1,7 @@
+*.pt
+*.pth
+*.pkl
+*.jpg
+*.png
 __pycache__
 .vscode
-*pt
-*.pth
-*.txt
-*.pkl
